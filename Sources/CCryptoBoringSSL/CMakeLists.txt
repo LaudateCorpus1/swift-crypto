@@ -17,7 +17,6 @@ add_library(CCryptoBoringSSL STATIC
   "crypto/asn1/a_bool.c"
   "crypto/asn1/a_d2i_fp.c"
   "crypto/asn1/a_dup.c"
-  "crypto/asn1/a_enum.c"
   "crypto/asn1/a_gentm.c"
   "crypto/asn1/a_i2d_fp.c"
   "crypto/asn1/a_int.c"
@@ -66,16 +65,15 @@ add_library(CCryptoBoringSSL STATIC
   "crypto/chacha/chacha.c"
   "crypto/cipher_extra/cipher_extra.c"
   "crypto/cipher_extra/derive_key.c"
-  "crypto/cipher_extra/e_aesccm.c"
   "crypto/cipher_extra/e_aesctrhmac.c"
   "crypto/cipher_extra/e_aesgcmsiv.c"
   "crypto/cipher_extra/e_chacha20poly1305.c"
+  "crypto/cipher_extra/e_des.c"
   "crypto/cipher_extra/e_null.c"
   "crypto/cipher_extra/e_rc2.c"
   "crypto/cipher_extra/e_rc4.c"
   "crypto/cipher_extra/e_tls.c"
   "crypto/cipher_extra/tls_cbc.c"
-  "crypto/cmac/cmac.c"
   "crypto/conf/conf.c"
   "crypto/cpu_aarch64_apple.c"
   "crypto/cpu_aarch64_fuchsia.c"
@@ -88,6 +86,7 @@ add_library(CCryptoBoringSSL STATIC
   "crypto/crypto.c"
   "crypto/curve25519/curve25519.c"
   "crypto/curve25519/spake25519.c"
+  "crypto/des/des.c"
   "crypto/dh_extra/dh_asn1.c"
   "crypto/dh_extra/params.c"
   "crypto/digest_extra/digest_extra.c"
@@ -101,7 +100,6 @@ add_library(CCryptoBoringSSL STATIC
   "crypto/engine/engine.c"
   "crypto/err/err.c"
   "crypto/err/err_data.c"
-  "crypto/evp/digestsign.c"
   "crypto/evp/evp.c"
   "crypto/evp/evp_asn1.c"
   "crypto/evp/evp_ctx.c"
@@ -110,6 +108,7 @@ add_library(CCryptoBoringSSL STATIC
   "crypto/evp/p_ec_asn1.c"
   "crypto/evp/p_ed25519.c"
   "crypto/evp/p_ed25519_asn1.c"
+  "crypto/evp/p_hkdf.c"
   "crypto/evp/p_rsa.c"
   "crypto/evp/p_rsa_asn1.c"
   "crypto/evp/p_x25519.c"
@@ -147,19 +146,20 @@ add_library(CCryptoBoringSSL STATIC
   "crypto/fipsmodule/cipher/aead.c"
   "crypto/fipsmodule/cipher/cipher.c"
   "crypto/fipsmodule/cipher/e_aes.c"
-  "crypto/fipsmodule/cipher/e_des.c"
-  "crypto/fipsmodule/des/des.c"
+  "crypto/fipsmodule/cipher/e_aesccm.c"
+  "crypto/fipsmodule/cmac/cmac.c"
   "crypto/fipsmodule/dh/check.c"
   "crypto/fipsmodule/dh/dh.c"
   "crypto/fipsmodule/digest/digest.c"
   "crypto/fipsmodule/digest/digests.c"
+  "crypto/fipsmodule/digestsign/digestsign.c"
   "crypto/fipsmodule/ec/ec.c"
   "crypto/fipsmodule/ec/ec_key.c"
   "crypto/fipsmodule/ec/ec_montgomery.c"
   "crypto/fipsmodule/ec/felem.c"
   "crypto/fipsmodule/ec/oct.c"
   "crypto/fipsmodule/ec/p224-64.c"
-  "crypto/fipsmodule/ec/p256-x86_64.c"
+  "crypto/fipsmodule/ec/p256-nistz.c"
   "crypto/fipsmodule/ec/p256.c"
   "crypto/fipsmodule/ec/scalar.c"
   "crypto/fipsmodule/ec/simple.c"
@@ -189,6 +189,7 @@ add_library(CCryptoBoringSSL STATIC
   "crypto/fipsmodule/rsa/rsa_impl.c"
   "crypto/fipsmodule/self_check/fips.c"
   "crypto/fipsmodule/self_check/self_check.c"
+  "crypto/fipsmodule/service_indicator/service_indicator.c"
   "crypto/fipsmodule/sha/sha1-altivec.c"
   "crypto/fipsmodule/sha/sha1.c"
   "crypto/fipsmodule/sha/sha256.c"
@@ -361,10 +362,13 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux|Android" AND CMAKE_SYSTEM_PROCESSOR MATC
 elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
   target_sources(CCryptoBoringSSL PRIVATE
     crypto/chacha/chacha-armv8.ios.aarch64.S
+    crypto/cipher_extra/chacha20_poly1305_armv8.ios.aarch64.S
     crypto/fipsmodule/aesv8-armx64.ios.aarch64.S
     crypto/fipsmodule/armv8-mont.ios.aarch64.S
     crypto/fipsmodule/ghash-neon-armv8.ios.aarch64.S
     crypto/fipsmodule/ghashv8-armx64.ios.aarch64.S
+    crypto/fipsmodule/p256-armv8-asm.ios.aarch64.S
+    crypto/fipsmodule/p256_beeu-armv8-asm.ios.aarch64.S
     crypto/fipsmodule/sha1-armv8.ios.aarch64.S
     crypto/fipsmodule/sha256-armv8.ios.aarch64.S
     crypto/fipsmodule/sha512-armv8.ios.aarch64.S
@@ -372,10 +376,13 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm
 elseif(CMAKE_SYSTEM_NAME MATCHES "Linux|Android" AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
   target_sources(CCryptoBoringSSL PRIVATE
     crypto/chacha/chacha-armv8.linux.aarch64.S
+    crypto/cipher_extra/chacha20_poly1305_armv8.linux.aarch64.S
     crypto/fipsmodule/aesv8-armx64.linux.aarch64.S
     crypto/fipsmodule/armv8-mont.linux.aarch64.S
     crypto/fipsmodule/ghash-neon-armv8.linux.aarch64.S
     crypto/fipsmodule/ghashv8-armx64.linux.aarch64.S
+    crypto/fipsmodule/p256-armv8-asm.linux.aarch64.S
+    crypto/fipsmodule/p256_beeu-armv8-asm.linux.aarch64.S
     crypto/fipsmodule/sha1-armv8.linux.aarch64.S
     crypto/fipsmodule/sha256-armv8.linux.aarch64.S
     crypto/fipsmodule/sha512-armv8.linux.aarch64.S

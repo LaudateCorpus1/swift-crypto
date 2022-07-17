@@ -119,10 +119,8 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
             goto err;
     }
     if (!(cflag & X509_FLAG_NO_VERSION)) {
-        /* TODO(https://crbug.com/boringssl/467): This loses information on some
-         * invalid versions, but we should fix this by making invalid versions
-         * impossible. */
         l = X509_get_version(x);
+        assert(X509_VERSION_1 <= l && l <= X509_VERSION_3);
         if (BIO_printf(bp, "%8sVersion: %ld (0x%lx)\n", "", l + 1,
                        (unsigned long)l) <= 0) {
             goto err;
@@ -134,15 +132,15 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
         }
 
         const ASN1_INTEGER *serial = X509_get0_serialNumber(x);
-        /* |ASN1_INTEGER_get| returns -1 on overflow, so this check skips
-         * negative and large serial numbers. */
-        l = ASN1_INTEGER_get(serial);
-        if (l >= 0) {
+        uint64_t serial_u64;
+        if (ASN1_INTEGER_get_uint64(&serial_u64, serial)) {
             assert(serial->type != V_ASN1_NEG_INTEGER);
-            if (BIO_printf(bp, " %ld (0x%lx)\n", l, (unsigned long)l) <= 0) {
-                goto err;
+            if (BIO_printf(bp, " %" PRIu64 " (0x%" PRIx64 ")\n", serial_u64,
+                           serial_u64) <= 0) {
+              goto err;
             }
         } else {
+            ERR_clear_error();  /* Clear |ASN1_INTEGER_get_uint64|'s error. */
             neg = (serial->type == V_ASN1_NEG_INTEGER) ? " (Negative)" : "";
             if (BIO_printf(bp, "\n%12s%s", "", neg) <= 0) {
                 goto err;
@@ -323,9 +321,7 @@ int X509_signature_print(BIO *bp, const X509_ALGOR *sigalg,
 int X509_NAME_print(BIO *bp, const X509_NAME *name, int obase)
 {
     char *s, *c, *b;
-    int ret = 0, l, i;
-
-    l = 80 - 2 - obase;
+    int ret = 0, i;
 
     b = X509_NAME_oneline(name, NULL, 0);
     if (!b)
@@ -352,12 +348,10 @@ int X509_NAME_print(BIO *bp, const X509_NAME *name, int obase)
                 if (BIO_write(bp, ", ", 2) != 2)
                     goto err;
             }
-            l--;
         }
         if (*s == '\0')
             break;
         s++;
-        l--;
     }
 
     ret = 1;
